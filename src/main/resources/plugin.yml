@@ -3,7 +3,7 @@ version: ${project.version}
 description: ${project.description}
 author: regulad
 
-main: xyz.regulad.demochat.DemoChat
+main: xyz.regulad.demochat.DemoChatPlugin
 api-version: 1.17
 libraries:
   - org.jetbrains:annotations:23.0.0
@@ -29,16 +29,28 @@ permissions:
   demochat.commands.changechannel:
     default: true
     description: Allows a player to change their channel.
+  demochat.commands.togglefilter:
+    default: true
+    description: Allows a player to toggle the filter.
 
 commands:
+  togglefilter:
+    aliases:
+      - "filter"
+    permission: "demochat.commands.togglefilter"
+    description: "Toggles the filter."
+    usage: "Usage: /<command>"
   createchannel:
     permission: "demochat.commands.createchannel"
+    description: "Adds a channel to the server."
     usage: "Usage: /<command> <Name of channel> <Same world> <Distance>"
   removechannel:
     permission: "demochat.commands.removechannel"
+    description: "Removes a channel from the server."
     usage: "Usage: /<command> <Name of channel>"
   changechannel:
     permission: "demochat.commands.changechannel"
+    description: "Changes your channel."
     usage: "Usage: /<command> <Name of channel>"
     aliases:
-      - c
+      - "c"

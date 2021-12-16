@@ -2,22 +2,22 @@ package xyz.regulad.demochat;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import net.kyori.adventure.text.TextComponent;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import xyz.regulad.demochat.commands.ChangeChannelCommand;
+import xyz.regulad.demochat.commands.CreateChannelCommand;
+import xyz.regulad.demochat.commands.DeleteChannelCommand;
+import xyz.regulad.demochat.commands.ToggleFilterCommand;
 import xyz.regulad.demochat.listener.ChatListener;
-import xyz.regulad.demochat.util.DistanceUtil;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Objects;
-import java.util.StringTokenizer;
+import java.util.*;
 
 public class DemoChatPlugin extends JavaPlugin {
     private final @NotNull HikariConfig hikariConfig = new HikariConfig();
@@ -29,24 +29,66 @@ public class DemoChatPlugin extends JavaPlugin {
         this.saveDefaultConfig();
 
         // Configure MySQL
-        this.hikariConfig.setJdbcUrl("jdbc:mysql://" + this.getConfig().getString("database.host") + ":" + this.getConfig().getInt("database.port") + "/" + this.getConfig().getString("database.db_name") + this.getConfig().getString("database.options"));
+        final @Nullable String hostname = this.getConfig().getString("database.host");
+        final int port = this.getConfig().getInt("database.port");
+        final @Nullable String databaseName = this.getConfig().getString("database.db_name");
+        final @Nullable String databaseOptions = this.getConfig().getString("database.options");
+        if (hostname == null || databaseName == null) {
+            throw new RuntimeException("Database not defined in configuration.");
+        }
+
+        final @NotNull String jdbcUri = String.format("jdbc:mysql://%s%s/%s%s", hostname, port != 3306 ? String.valueOf(port) : "", databaseName, databaseOptions != null ? databaseOptions : "");
+
+        this.getLogger().info(String.format("Connecting to %s.", jdbcUri));
+        this.hikariConfig.setJdbcUrl(jdbcUri);
+        this.hikariConfig.setUsername(this.getConfig().getString("database.user"));
+        this.hikariConfig.setPassword(this.getConfig().getString("database.password"));
         this.hikariDataSource = new HikariDataSource(this.hikariConfig);
-        this.getLogger().info("Successfully connected to the MySQL database.");
+        this.getLogger().info(String.format("Successfully connected to the MySQL database at %s.", jdbcUri));
 
         try {
             // Create channel table
-            this.hikariDataSource.getConnection().prepareStatement("CREATE TABLE IF NOT EXISTS demochat (uuid CHAR(36) UNIQUE, channel VARCHAR(256) DEFAULT null, filter INT DEFAULT 0, PRIMARY KEY (uuid));").execute();
+            this.hikariDataSource.getConnection().prepareStatement("CREATE TABLE IF NOT EXISTS demochat (uuid CHAR(36) UNIQUE, channel VARCHAR(256) DEFAULT null, filter BOOLEAN DEFAULT FALSE, PRIMARY KEY (uuid));").execute();
         } catch (final @NotNull SQLException sqlException) {
             sqlException.printStackTrace();
             this.getServer().getPluginManager().disablePlugin(this);
             return;
         }
 
+        // Register events
         this.getServer().getPluginManager().registerEvents(new ChatListener(this), this);
+
+        // Register command executors & tab listeners
+        final @Nullable PluginCommand toggleFilterPluginCommand = this.getCommand("togglefilter");
+        if (toggleFilterPluginCommand != null) {
+            final @NotNull ToggleFilterCommand toggleFilterCommand = new ToggleFilterCommand(this);
+            toggleFilterPluginCommand.setExecutor(toggleFilterCommand);
+        }
+        final @Nullable PluginCommand createChannelPluginCommand = this.getCommand("createchannel");
+        if (createChannelPluginCommand != null) {
+            final @NotNull CreateChannelCommand createChannelCommand = new CreateChannelCommand(this);
+            createChannelPluginCommand.setExecutor(createChannelCommand);
+            createChannelPluginCommand.setTabCompleter(createChannelCommand);
+        }
+        final @Nullable PluginCommand removeChannelPluginCommand = this.getCommand("removechannel");
+        if (removeChannelPluginCommand != null) {
+            final @NotNull DeleteChannelCommand removeChannelCommand = new DeleteChannelCommand(this);
+            removeChannelPluginCommand.setExecutor(removeChannelCommand);
+            removeChannelPluginCommand.setTabCompleter(removeChannelCommand);
+        }
+        final @Nullable PluginCommand changeChannelPluginCommand = this.getCommand("changechannel");
+        if (changeChannelPluginCommand != null) {
+            final @NotNull ChangeChannelCommand changeChannelCommand = new ChangeChannelCommand(this);
+            changeChannelPluginCommand.setExecutor(changeChannelCommand);
+            changeChannelPluginCommand.setTabCompleter(changeChannelCommand);
+        }
     }
 
-    public @NotNull Connection getConnection() throws SQLException {
-        return Objects.requireNonNull(this.hikariDataSource).getConnection();
+    @Override
+    public void onDisable() {
+        if (this.hikariDataSource != null) {
+            this.hikariDataSource.close();
+        }
     }
 
     /**
@@ -58,7 +100,7 @@ public class DemoChatPlugin extends JavaPlugin {
     public @NotNull ArrayList<@NotNull Player> getPlayersInChannel(final @NotNull ChatChannel chatChannel) {
         final @NotNull ArrayList<@NotNull Player> playersInChannel = new ArrayList<>();
         for (final @NotNull Player player : this.getServer().getOnlinePlayers()) {
-            final @Nullable ChatChannel playerChannel = this.getPlayerChatChannel(player);
+            final @NotNull ChatChannel playerChannel = this.getPlayerChatChannelOrDefault(player);
             if (chatChannel.equals(playerChannel)) {
                 playersInChannel.add(player);
             }
@@ -81,7 +123,7 @@ public class DemoChatPlugin extends JavaPlugin {
         if (chatChannel.distance() > 0) {
             allPlayersInChannel.removeIf(player -> {
                 try {
-                    return DistanceUtil.interDimensionDistance(speaker.getLocation(), player.getLocation()) < chatChannel.distance();
+                    return speaker.getLocation().distance(player.getLocation()) > chatChannel.distance();
                 } catch (final @NotNull IllegalArgumentException illegalArgumentException) {
                     return true;
                 }
@@ -100,7 +142,7 @@ public class DemoChatPlugin extends JavaPlugin {
         for (final @NotNull Map<?, ?> channelConfiguration : this.getConfig().getMapList("channels")) {
             final @Nullable String name = (String) channelConfiguration.get("name");
             final boolean sameworld = (Boolean) channelConfiguration.get("sameworld");
-            final long distance = (Long) channelConfiguration.get("distance");
+            final int distance = (Integer) channelConfiguration.get("distance");
 
             if (name == null) {
                 throw new RuntimeException("Missing name on channel.");
@@ -133,15 +175,25 @@ public class DemoChatPlugin extends JavaPlugin {
      * @param chatChannel A {@link ChatChannel} to add to the configuration.
      */
     public void registerChatChannel(final @NotNull ChatChannel chatChannel) {
-        this.getConfig().getMapList("channels").add(chatChannel.asHashMap());
+        final @NotNull List<Map<?, ?>> existingList = this.getConfig().getMapList("channels"); // Not thread safe!
+        existingList.add(chatChannel.asHashMap());
+        this.getConfig().set("channels", existingList);
+        this.saveConfig();
+        this.reloadConfig();
     }
 
     /**
-     * @param chatChannel The {@link ChatChannel} to remove from the plugin's
-     * @return {@code true} if the item was removed from the list.
+     * Removes a {@link ChatChannel} from the plugin's configuration.
+     *
+     * @param chatChannel The {@link ChatChannel} to remove from the plugin's configuration.
      */
-    public boolean deregisterChatChannel(final @NotNull ChatChannel chatChannel) {
-        return this.getConfig().getMapList("channels").remove(chatChannel.asHashMap());
+    public void deregisterChatChannel(final @NotNull ChatChannel chatChannel) {
+        final @NotNull List<Map<?, ?>> existingList = this.getConfig().getMapList("channels");
+        // This only checks for the name, but that's ok since there should only be 1 entry with a name
+        existingList.removeIf(map -> map.get("name").equals(chatChannel.name()));
+        this.getConfig().set("channels", existingList);
+        this.saveConfig();
+        this.reloadConfig();
     }
 
     /**
@@ -152,8 +204,8 @@ public class DemoChatPlugin extends JavaPlugin {
      * @return {@code true} if the operation was successful.
      */
     public boolean setPlayerChatChannel(final @NotNull Player player, final @Nullable ChatChannel chatChannel) {
-        try {
-            final @NotNull PreparedStatement preparedStatement = this.getConnection().prepareStatement("INSERT INTO demochat (uuid, channel) VALUES(?, ?) ON DUPLICATE KEY UPDATE channel=?;");
+        try (final @NotNull Connection connection = Objects.requireNonNull(this.hikariDataSource).getConnection()) {
+            final @NotNull PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO demochat (uuid, channel) VALUES(?, ?) ON DUPLICATE KEY UPDATE channel=?;");
             preparedStatement.setString(1, player.getUniqueId().toString());
             preparedStatement.setString(2, chatChannel != null ? chatChannel.name() : null);
             preparedStatement.setString(3, chatChannel != null ? chatChannel.name() : null);
@@ -176,8 +228,8 @@ public class DemoChatPlugin extends JavaPlugin {
      * @return {@code true} if the operation was successful.
      */
     public boolean setPlayerFilterPreference(final @NotNull Player player, final boolean filter) {
-        try {
-            final @NotNull PreparedStatement preparedStatement = this.getConnection().prepareStatement("INSERT INTO demochat (uuid, filter) VALUES(?, ?) ON DUPLICATE KEY UPDATE filter=?;");
+        try (final @NotNull Connection connection = Objects.requireNonNull(this.hikariDataSource).getConnection()) {
+            final @NotNull PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO demochat (uuid, filter) VALUES(?, ?) ON DUPLICATE KEY UPDATE filter=?;");
             preparedStatement.setString(1, player.getUniqueId().toString());
             preparedStatement.setBoolean(2, filter);
             preparedStatement.setBoolean(3, filter);
@@ -208,12 +260,12 @@ public class DemoChatPlugin extends JavaPlugin {
      * @throws RuntimeException If an invalid {@link ChatChannel} was defined in the configuration.
      */
     public @NotNull ChatChannel getDefaultChatChannel() {
-        for (final @NotNull ChatChannel chatChannel : this.getChatChannels()) {
-            if (chatChannel.name().equals(this.getConfig().getString("default_channel"))) {
-                return chatChannel;
-            }
+        final @Nullable ChatChannel defaultChatChannel = this.getChatChannel(Objects.requireNonNull(this.getConfig().getString("default_channel")));
+        if (defaultChatChannel != null) {
+            return defaultChatChannel;
+        } else {
+            throw new RuntimeException("Invalid default channel declared!");
         }
-        throw new RuntimeException("Invalid default channel declared!");
     }
 
     /**
@@ -223,8 +275,8 @@ public class DemoChatPlugin extends JavaPlugin {
      * @return The {@link ChatChannel} that the player uses, or {@code null} if it is not defined or not found.
      */
     public @Nullable ChatChannel getPlayerChatChannel(final @NotNull Player player) {
-        try {
-            final @NotNull PreparedStatement preparedStatement = this.getConnection().prepareStatement("SELECT * FROM demochat WHERE uuid = ?;");
+        try (final @NotNull Connection connection = Objects.requireNonNull(this.hikariDataSource).getConnection()) {
+            final @NotNull PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM demochat WHERE uuid = ?;");
             preparedStatement.setString(1, player.getUniqueId().toString());
 
             final @NotNull ResultSet resultSet = preparedStatement.executeQuery();
@@ -249,8 +301,8 @@ public class DemoChatPlugin extends JavaPlugin {
      * @return The {@link ChatChannel} that the player uses, or {@code null} if it is not defined or not found.
      */
     public boolean prefersFilter(final @NotNull Player player) {
-        try {
-            final @NotNull PreparedStatement preparedStatement = this.getConnection().prepareStatement("SELECT * FROM demochat WHERE uuid = ?;");
+        try (final @NotNull Connection connection = Objects.requireNonNull(this.hikariDataSource).getConnection()) {
+            final @NotNull PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM demochat WHERE uuid = ?;");
             preparedStatement.setString(1, player.getUniqueId().toString());
 
             final @NotNull ResultSet resultSet = preparedStatement.executeQuery();
@@ -287,15 +339,5 @@ public class DemoChatPlugin extends JavaPlugin {
             formattedMessage = formattedMessage.replaceAll("(?i)" + regexAndReplacement[0] /* regex */, regexAndReplacement[1] /* replacement */);
         }
         return formattedMessage;
-    }
-
-    /**
-     * Filters a {@link TextComponent} using the declared filters in the config.yml in a similar implementation to VentureChat.
-     *
-     * @param unformattedComponent The {@link TextComponent} to format.
-     * @return The formatted {@link TextComponent}.
-     */
-    public @NotNull TextComponent filterComponent(final @NotNull TextComponent unformattedComponent) {
-        return unformattedComponent.content(filterString(unformattedComponent.content()));
     }
 }

@@ -1,5 +1,6 @@
 verison: 1 # Don't touch this yourself. For future use.
 
+debug: false
 
 # =-=-=-=-=-=-=-=-=
 #  MySQL Database
@@ -23,7 +24,6 @@ channels:
     sameworld: false # If players should be in the same world in order to see messages in this channel.
     distance: -1 # How far players must be from each other to hear them.
     # A value less than or equal to 0 means infinite.
-    # If sameworld is false, distance will scale 1:8 for the Nether, and not at all for the end.
   - name: shout
     sameworld: true
     distance: -1
@@ -31,7 +31,7 @@ channels:
     sameworld: true
     distance: 20
   - name: whisper
-    sameworld: ture
+    sameworld: true
     distance: 3
 
 

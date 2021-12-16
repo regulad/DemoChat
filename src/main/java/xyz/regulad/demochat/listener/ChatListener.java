@@ -7,9 +7,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import xyz.regulad.demochat.ChatChannel;
 import xyz.regulad.demochat.DemoChatPlugin;
 import xyz.regulad.demochat.event.AsyncDemoChatEvent;
+import xyz.regulad.demochat.util.ChatRendererUtil;
+
+import java.util.ArrayList;
 
 public class ChatListener implements Listener {
     private final @NotNull DemoChatPlugin demoChatPlugin;
@@ -26,18 +30,28 @@ public class ChatListener implements Listener {
     }
 
     @EventHandler
-    public void modifyChatEvent(final @NotNull AsyncChatEvent asyncChatEvent) {
+    public void changeWhoCanHear(final @NotNull AsyncChatEvent asyncChatEvent) {
         final @NotNull ChatChannel destinationChannel = this.demoChatPlugin.getPlayerChatChannelOrDefault(asyncChatEvent.getPlayer());
-        asyncChatEvent.viewers().clear();
-        asyncChatEvent.viewers().addAll(this.demoChatPlugin.getPlayersWhoCanHear(asyncChatEvent.getPlayer(), destinationChannel));
-        // Now only viewers who can hear the chat following the channel logic can see it.
+        final @NotNull ArrayList<@NotNull Player> canHear = (this.demoChatPlugin.getPlayersWhoCanHear(asyncChatEvent.getPlayer(), destinationChannel));
+        asyncChatEvent.viewers().removeIf(audience -> {
+            if (audience instanceof final @NotNull Player player) {
+                return !canHear.contains(player);
+            }
+            return false;
+        });
+    }
 
-        final @NotNull ChatRenderer existingChatRenderer = asyncChatEvent.renderer();
+    @EventHandler
+    public void addRenderer(final @NotNull AsyncChatEvent asyncChatEvent) {
+        final @Nullable ChatRenderer existingChatRenderer = ChatRendererUtil.isViewerUnaware(asyncChatEvent.renderer()) ? null : asyncChatEvent.renderer();
         asyncChatEvent.renderer((source, sourceDisplayName, message, viewer) -> {
-            if (viewer instanceof final @NotNull Player player && this.demoChatPlugin.prefersFilter(player) && message instanceof final @NotNull TextComponent textComponent) {
-                return existingChatRenderer.render(source, sourceDisplayName, this.demoChatPlugin.filterComponent(textComponent), viewer);
+            final @NotNull ChatRenderer localRenderer = existingChatRenderer != null ? existingChatRenderer : ChatRenderer.defaultRenderer();
+            if (viewer instanceof final @NotNull Player player && message instanceof final @NotNull TextComponent textComponent) {
+                if (this.demoChatPlugin.prefersFilter(player)) {
+                    return localRenderer.render(source, sourceDisplayName, textComponent.content(this.demoChatPlugin.filterString(textComponent.content())), viewer);
+                }
             } // If message isn't a TextComponent, this won't work.
-            return existingChatRenderer.render(source, sourceDisplayName, message, viewer);
+            return localRenderer.render(source, sourceDisplayName, message, viewer);
         });
     }
 }

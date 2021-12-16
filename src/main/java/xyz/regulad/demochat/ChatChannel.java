@@ -4,8 +4,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 
-public record ChatChannel(@NotNull String name, boolean sameWorld, long distance) {
-    public ChatChannel(final @NotNull String name, final boolean sameWorld, final long distance) {
+public record ChatChannel(@NotNull String name, boolean sameWorld, int distance) {
+    public ChatChannel(final @NotNull String name, final boolean sameWorld, final int distance) {
         this.name = name;
         this.sameWorld = sameWorld;
         this.distance = distance;
