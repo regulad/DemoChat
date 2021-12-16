@@ -6,4 +6,39 @@ author: regulad
 main: xyz.regulad.demochat.DemoChat
 api-version: 1.17
 libraries:
-  - org.jetbrains:annotations:22.0.0
+  - org.jetbrains:annotations:23.0.0
+  - com.zaxxer:HikariCP:5.0.0
+
+permissions:
+  demochat.*:
+    description: Grants access to all permissions.
+    children:
+      - "demochat.commands.*"
+  demochat.commands.*:
+    description: Grants access to all commands.
+    children:
+      - "demochat.commands.createchannel"
+      - "demochat.commands.removechannel"
+      - "demochat.commands.changechannel"
+  demochat.commands.createchannel:
+    description: Adds a chat chanenl to the plugin.
+    default: op
+  demochat.commands.removechannel:
+    description: Removes a chat channel from the plugin.
+    default: op
+  demochat.commands.changechannel:
+    default: true
+    description: Allows a player to change their channel.
+
+commands:
+  createchannel:
+    permission: "demochat.commands.createchannel"
+    usage: "Usage: /<command> <Name of channel> <Same world> <Distance>"
+  removechannel:
+    permission: "demochat.commands.removechannel"
+    usage: "Usage: /<command> <Name of channel>"
+  changechannel:
+    permission: "demochat.commands.changechannel"
+    usage: "Usage: /<command> <Name of channel>"
+    aliases:
+      - c

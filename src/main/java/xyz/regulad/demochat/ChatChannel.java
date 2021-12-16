@@ -13,6 +13,7 @@ public record ChatChannel(@NotNull String name, boolean sameWorld, long distance
 
     /**
      * Constructs the {@link ChatChannel} as a {@link HashMap} that can be added to the configuration.
+     *
      * @return A {@link HashMap} representing the {@link ChatChannel}.
      */
     public @NotNull HashMap<@NotNull Object, @NotNull Object> asHashMap() {
