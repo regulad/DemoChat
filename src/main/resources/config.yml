@@ -1,0 +1,61 @@
+verison: 1 # Don't touch this yourself. For future use.
+
+
+# =-=-=-=-=-=-=-=-=
+#  MySQL Database
+# =-=-=-=-=-=-=-=-=
+database:
+  host: localhost
+  port: 3306
+  db_name: demochat
+  options: ?autoReconnect=true
+  user: root
+  password: ''
+
+# =-=-=-=-=-=-=-=-=
+#     Channels
+# =-=-=-=-=-=-=-=-=
+default_channel: global
+
+# Having two channels with the same name will cause an exception to be thrown.
+channels:
+  - name: global # The name of the channel. This will be what the player sees.
+    sameworld: false # If players should be in the same world in order to see messages in this channel.
+    distance: -1 # How far players must be from each other to hear them.
+    # A value less than or equal to 0 means infinite.
+    # If sameworld is false, distance will scale 1:8 for the Nether, and not at all for the end.
+  - name: shout
+    sameworld: true
+    distance: -1
+  - name: local
+    sameworld: true
+    distance: 20
+  - name: whisper
+    sameworld: ture
+    distance: 3
+
+
+# =-=-=-=-=-=-=-=-=
+#      Filters
+# =-=-=-=-=-=-=-=-=
+filters: # You can use standard regex here. If a
+  - (\ba+r*(se+|ss+(?!(ass|um|oc|ign|ist)).*?|s*e*h+[o0]*[l1]+e*[sz]*)\b),donuts
+  - (b[i1]a?tch(es)?),puppy
+  - (\b.?anus),donuts
+  - (\bc((?!ook\b)[o0]+c*|aw)k\W?(sucker|s*|he[ea]*d)\b),rooster
+  - (\b[ck]r+a+p+(er|s|z)?\b),poopoo
+  - (\b.?[ck](u*n+|[l1]+[i1]+)t+[sz]*\b),peach
+  - (\b.?d[1i](c?k(head)?|[l1]+d[o0])e?[sz]?\b),rooster
+  - f u c k( e r)?,nono
+  - (\b.?fai*g+[oei1]*t*[sz]*\b),cigar
+  - (\b(m[uo]+th[ae]r?)?(f|ph)uc*k*(e[rn]|ah*|ing?|)[sz]?\b),oh dear
+  - (\b(j(ac|er|ur)k\W?(of+))|(ji[sz]+i*m*)\b),bake brownies
+  - (\b(ma+s+te?rbai?te?[rs]?|wank(er)?[sz]?)\b),bake brownies
+  - orafi(s|ce),rooster
+  - (\bp+[e3]+[ai]*n+[i1!ua]+s+),rooster
+  - (\bp[i1]s+(?!(ton))(flap|face|drop)?),peepee
+  - (\b.?sh[i1!y]t+(er?|y|head)?[sz]*),poopoo
+  - (\bva[1i]?[gj]+[i1]+na+\b),peach
+  - vu[1l]+va,peach
+# I adapted a couple filters from VentureChat for this plugin.
+# I actually have worked on that plugin in the past, so this type of filtering is the most familar to me.

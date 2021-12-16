@@ -4,10 +4,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>xyz.regulad</groupId>
-    <artifactId>bukkittemplate</artifactId>
+    <artifactId>demochat</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>BukkitTemplate</name>
+    <name>DemoChat</name>
     <developers>
         <developer>
             <id>regulad</id>
@@ -16,13 +16,13 @@
         </developer>
     </developers>
     <description>
-        A quick template for making shitty plugins.
+        A simple chat plugin that features different channels.
     </description>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     <scm>
-        <url>https://github.com/regulad/${project.name}.git</url>
+        <url>https://github.com/regulad/DemoChat.git</url>
     </scm>
     <pluginRepositories>
         <pluginRepository>
@@ -44,7 +44,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.8.1</version>
                 <configuration>
-                    <release>16</release> <!-- TODO: Change this to what you may need. -->
+                    <release>16</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -81,8 +81,8 @@
                     <minimizeJar>true</minimizeJar>
                     <relocations>
                         <relocation>
-                            <pattern>org.bstats</pattern>
-                            <shadedPattern>${project.groupId}.${project.name}.dep.org.bstats</shadedPattern>
+                            <pattern>com.zaxxer</pattern>
+                            <shadedPattern>xyz.regulad.demochat.dep.com.zaxxer</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>
@@ -101,7 +101,7 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/regulad/${project.name}</url>
+            <url>https://maven.pkg.github.com/regulad/DemoChat</url>
         </repository>
     </distributionManagement>
     <repositories>
@@ -116,6 +116,12 @@
             <artifactId>paper-api</artifactId>
             <version>1.17.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>5.0.0</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>
